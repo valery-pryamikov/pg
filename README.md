@@ -121,8 +121,9 @@ inputs. AES-128 and MD5 implementations are byte-for-byte compatible with
 `node:crypto`.
 
 ### Why MD5 is fine here
-The design uses MD5 as a fast deterministic compression function, not as
-a security primitive.
+**The design uses MD5 as a fast deterministic compression function, not as
+a security primitive.**
+
 In more details: MD5 is broken for *collision resistance*: an attacker can
 construct two different inputs with the same MD5 hash. That attack model
 does not apply here, because:
