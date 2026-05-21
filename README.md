@@ -189,7 +189,7 @@ native crypto.
 generation pipeline (steps 1–7 in [Algorithm](#algorithm) above) is run
 for fixed inputs in Node, producing a known reference password
 (e.g. for `master="hunter2", domain="example.com", user="alice", div=""`
-with the default settings, the result is `"t8p23ewFXbyT"`). The same
+with the default settings, the result is `"t2p3xewFXbyT"`). The same
 inputs are then fed to the in-page algorithm via a headless DOM (jsdom),
 which loads `pg.html` and runs the actual script in the page; the
 in-page result must match the Node reference byte-for-byte.
