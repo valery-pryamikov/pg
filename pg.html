@@ -1,0 +1,1325 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Password Generator</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card-bg: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --accent: #4f46e5;
+      --accent-hover: #4338ca;
+      --error: #dc2626;
+      --success: #059669;
+      --warn: #d97706;
+      --border: #e5e7eb;
+      --invalid: #dc2626;
+      --code-bg: #f3f4f6;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      padding: 1rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 10px 30px -10px rgba(0,0,0,0.1);
+      padding: 1.75rem;
+      width: 100%; max-width: 26rem;
+    }
+    h1 { font-size: 1.4rem; margin: 0 0 1.25rem; }
+    h2 { font-size: 1.1rem; margin: 0 0 1rem; }
+    .field { display: block; margin-bottom: 0.85rem; }
+    .field span { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.25rem; }
+    input[type="text"], input[type="password"], select {
+      width: 100%; padding: 0.55rem 0.7rem;
+      border: 1px solid var(--border); border-radius: 6px;
+      font: inherit; background: white; color: var(--text);
+    }
+    input:focus, select:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: transparent; }
+    input.invalid { border-color: var(--invalid); background: #fef2f2; }
+    .generate-btn {
+      display: block; width: 100%; padding: 0.65rem; margin-top: 0.6rem;
+      background: var(--accent); color: white;
+      border: none; border-radius: 6px;
+      font: inherit; font-weight: 500; cursor: pointer;
+    }
+    .generate-btn:hover { background: var(--accent-hover); }
+    .icon-row { display: flex; justify-content: center; gap: 0.5rem; margin-top: 1rem; }
+    .icon-btn {
+      width: 2.4rem; height: 2.4rem;
+      border: 1px solid var(--border); border-radius: 6px;
+      background: white; color: var(--muted); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+    }
+    .icon-btn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+    .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .icon-btn svg { width: 1.2rem; height: 1.2rem; }
+    .status {
+      min-height: 1.4rem; margin-top: 0.75rem;
+      font-size: 0.85rem; text-align: center;
+    }
+    .status.error   { color: var(--error);   }
+    .status.success { color: var(--success); }
+    .status.warn    { color: var(--warn);    }
+
+    dialog {
+      border: none; border-radius: 12px; padding: 1.5rem;
+      box-shadow: 0 20px 50px -10px rgba(0,0,0,0.25);
+      max-width: 28rem; width: 90%;
+      color: var(--text); background: var(--card-bg);
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.4); }
+    .settings-row {
+      display: grid;
+      grid-template-columns: 5.5rem 1fr 4.5rem;
+      gap: 0.5rem; margin-bottom: 0.6rem;
+      align-items: center;
+    }
+    .settings-row label { font-size: 0.85rem; color: var(--muted); }
+    .settings-row input, .settings-row select {
+      padding: 0.4rem 0.5rem; font-size: 0.92rem;
+    }
+    .error {
+      color: var(--error); font-size: 0.85rem;
+      min-height: 1.2rem; margin-top: 0.5rem;
+    }
+    .dialog-actions {
+      display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;
+    }
+    .dialog-actions button {
+      padding: 0.5rem 1rem; border-radius: 6px;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; font: inherit;
+    }
+    .dialog-actions button.primary {
+      background: var(--accent); color: white; border-color: var(--accent);
+    }
+    .dialog-actions button.primary:hover { background: var(--accent-hover); }
+    .dialog-actions button:not(.primary):hover { background: #f3f4f6; }
+    .password-display {
+      background: var(--code-bg); padding: 1rem; border-radius: 6px;
+      font: 1.05rem ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      word-break: break-all; user-select: all;
+      border: 1px solid var(--border);
+      min-height: 3rem;
+    }
+
+    /* Help dialog — has more text than the others */
+    dialog.help { max-width: 38rem; }
+    .help-content { max-height: 70vh; overflow-y: auto; padding-right: 0.5rem; }
+    .help-content h3 {
+      font-size: 1rem; margin: 1.1rem 0 0.4rem; color: var(--accent);
+    }
+    .help-content h3:first-child { margin-top: 0; }
+    .help-content p  { margin: 0.4rem 0; }
+    .help-content ul { margin: 0.4rem 0; padding-left: 1.4rem; }
+    .help-content li { margin-bottom: 0.3rem; }
+    .help-content code {
+      background: var(--code-bg); padding: 0.05rem 0.3rem;
+      border-radius: 3px; font-size: 0.9em;
+    }
+    .help-content .step {
+      background: var(--code-bg); padding: 0.5rem 0.75rem;
+      border-radius: 6px; margin: 0.4rem 0;
+      font-size: 0.92rem;
+    }
+    .help-content .step strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+
+<main class="card">
+  <h1>Password Generator</h1>
+
+  <!--
+    autocomplete="off" + autocomplete="new-password" on master discourages
+    browser autofill. (Chrome notably ignores autocomplete="off" on password
+    fields unless this exact value is used.) Random-ish field names also help.
+  -->
+  <form id="mainForm" autocomplete="off" novalidate>
+    <input type="text" name="dummy_user_pg"     style="display:none" autocomplete="username">
+    <input type="password" name="dummy_pass_pg" style="display:none" autocomplete="new-password">
+
+    <label class="field">
+      <span>Master</span>
+      <input type="password" id="master" name="m_pg"
+             autocomplete="new-password" spellcheck="false" required>
+    </label>
+    <label class="field">
+      <span>Domain</span>
+      <input type="text" id="domain" name="d_pg"
+             autocomplete="off" spellcheck="false" required
+             pattern="[A-Za-z0-9.\-]+"
+             title="Domain-like string: letters, digits, dot, hyphen">
+    </label>
+    <label class="field">
+      <span>User</span>
+      <input type="text" id="user" name="u_pg"
+             autocomplete="off" spellcheck="false" required>
+    </label>
+    <label class="field">
+      <span>Diversificator (optional)</span>
+      <input type="text" id="div" name="x_pg"
+             autocomplete="off" spellcheck="false">
+    </label>
+
+    <button type="submit" class="generate-btn">Generate</button>
+
+    <div class="icon-row">
+      <button type="button" id="settingsBtn" class="icon-btn"
+              title="Settings" aria-label="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
+      <button type="button" id="helpBtn" class="icon-btn"
+              title="Help / How it works" aria-label="Help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </button>
+      <button type="button" id="revealBtn" class="icon-btn"
+              title="Show last generated password"
+              aria-label="Show last generated password" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle cx="12" cy="12" r="3"/>
+        </svg>
+      </button>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+  </form>
+</main>
+
+<!-- Settings dialog -->
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <h2 id="settingsTitle">Character Set Settings</h2>
+  <div class="settings-row">
+    <label for="capsChars">Capitals</label>
+    <input type="text" id="capsChars" autocomplete="off" spellcheck="false">
+    <select id="capsCount" aria-label="Number of capital letters"></select>
+  </div>
+  <div class="settings-row">
+    <label for="lowerChars">Lowercase</label>
+    <input type="text" id="lowerChars" autocomplete="off" spellcheck="false">
+    <select id="lowerCount" aria-label="Number of lowercase letters"></select>
+  </div>
+  <div class="settings-row">
+    <label for="digitsChars">Digits</label>
+    <input type="text" id="digitsChars" autocomplete="off" spellcheck="false">
+    <select id="digitsCount" aria-label="Number of digits"></select>
+  </div>
+  <div class="settings-row">
+    <label for="specialChars">Specials</label>
+    <input type="text" id="specialChars" autocomplete="off" spellcheck="false">
+    <select id="specialCount" aria-label="Number of special characters"></select>
+  </div>
+  <div id="settingsError" class="error" role="alert"></div>
+  <div class="dialog-actions">
+    <button type="button" id="cancelBtn">Cancel</button>
+    <button type="button" id="acceptBtn" class="primary">Accept</button>
+  </div>
+</dialog>
+
+<!-- Reveal dialog -->
+<dialog id="revealDialog" aria-labelledby="revealTitle">
+  <h2 id="revealTitle">Generated Password</h2>
+  <div class="password-display"><code id="revealText"></code></div>
+  <div class="dialog-actions">
+    <button type="button" id="closeRevealBtn" class="primary">Close</button>
+  </div>
+</dialog>
+
+<!-- Help dialog -->
+<dialog id="helpDialog" class="help" aria-labelledby="helpTitle">
+  <h2 id="helpTitle">How this Password Generator works</h2>
+  <div class="help-content">
+
+    <h3>Determinism</h3>
+    <p>
+      The generator is fully <strong>deterministic</strong>: the same inputs
+      (master password, domain, user, diversificator, and character-set settings)
+      always produce the same output password. There is no random state and
+      nothing is stored anywhere — the password is recomputed each time from
+      your inputs.
+    </p>
+    <p>
+      This means you do <em>not</em> need a password vault, sync service, or
+      backup. As long as you remember your master password and your settings,
+      you can regenerate any of your passwords on any device that runs this
+      page.
+    </p>
+
+    <h3>Security guarantees</h3>
+    <p>
+      Only the <strong>master password</strong> is secret. Everything else
+      is safe to store, share, or sync in plaintext:
+    </p>
+    <ul>
+      <li>The <code>pg.html</code> file itself contains no secrets and can be
+          published, copied, or sent to anyone — anyone running it produces
+          their own passwords from their own master.</li>
+      <li>The <strong>domain</strong>, <strong>user</strong>, and
+          <strong>diversificator</strong> values can be written down or kept
+          in any list-keeping app without protection. They function as
+          per-site labels, not as secrets.</li>
+      <li>The <strong>character-set settings</strong> (which characters and
+          how many of each) can also be saved or shared freely. They affect
+          the shape of the output but not its secrecy.</li>
+      <li>The <strong>generated password</strong> for one site does not
+          help an attacker derive the password for any other site — each
+          site's password depends on the master combined with that site's
+          unique label, and each section of each password is produced under
+          a freshly-derived permutation.</li>
+    </ul>
+    <p>
+      An attacker who knows your domain/user/diversificator/settings — and
+      even one or more passwords you generated — still has to guess your
+      master password by brute force. The pipeline is intentionally heavy
+      (each password generation runs hundreds of thousands of small block
+      operations), so each guess costs the attacker the same work as it
+      costs you. Pick a long master password.
+    </p>
+
+    <h3>The algorithm in detail</h3>
+    <p>
+      Given inputs <em>master</em>, <em>domain</em>, <em>user</em>, and
+      optional <em>div</em>:
+    </p>
+
+    <div class="step">
+      <strong>Step&nbsp;1.</strong> Compute <code>A = MD5(master)</code>.
+      This 128-bit value is used as the AES-128 key in the next step.
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;2.</strong> Build
+      <code>B = MD5(domain) ‖ MD5(user)</code>, and append
+      <code>MD5(div)</code> if <em>div</em> is non-empty.
+      <code>B</code> is therefore 32 or 48 bytes (two or three 128-bit blocks).
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;3.</strong> Encrypt <code>B</code> with AES-128 in
+      <strong>CBC</strong> mode under key <code>A</code>, using a zero IV.
+      Each block is XOR'd with the previous ciphertext block before encryption.
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;4.</strong> Take the <em>last</em> ciphertext block as
+      <code>C</code> — the per-site 128-bit derived key.
+      Because of CBC chaining, <code>C</code> depends on every byte of every
+      input.
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;5.</strong> Initialize a <strong>TinyPRP</strong>
+      cipher (a small AES-style permutation on 16-bit values) with key
+      <code>C</code>. TinyPRP plus cycle walking gives us a keyed
+      pseudo-random permutation on any range <code>[0, n)</code>.
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;6.</strong> For each character-class section
+      (capitals, lowercase, digits, specials), if its count is &gt; 0:
+      <ul>
+        <li>Shuffle its character set into <code>reSeed</code> using TinyPRP.</li>
+        <li>Append the first <em>count</em> characters of <code>reSeed</code>
+            to the working password <code>D</code>.</li>
+        <li>Update <code>C := C ⊕ MD5(reSeed)</code> and re-key TinyPRP with
+            the new <code>C</code>. This guarantees that the next section
+            (and the final shuffle below) uses a different permutation.
+            Knowing the permutation used for one section reveals nothing
+            about the others.</li>
+      </ul>
+    </div>
+    <div class="step">
+      <strong>Step&nbsp;7.</strong> Shuffle the assembled string <code>D</code>
+      one final time with the latest TinyPRP key. The result is the final password.
+    </div>
+
+    <h3>Why MD5's weaknesses don't matter here</h3>
+    <p>
+      <strong>The design uses MD5 as a fast deterministic compression
+      function, not as a security primitive. Replacing it with SHA-256 would
+      make no practical difference to the attacker's task.</strong>
+    </p>
+    <p>
+      In more detail: MD5 is famously broken for collision resistance — it
+      is feasible to construct two different messages with the same MD5 hash.
+      That class of attack is <strong>not relevant</strong> to this generator,
+      because:
+    </p>
+    <ul>
+      <li>We never compare two different MD5 values for equality, nor do we
+          accept arbitrary inputs from an attacker. Collision attacks need
+          the attacker to choose <em>both</em> messages.</li>
+      <li>MD5 is used here purely as a deterministic hash — to compress
+          variable-length inputs (master, domain, user, diversificator,
+          intermediate <code>reSeed</code> values) into fixed-length 128-bit
+          values that feed into AES and TinyPRP.</li>
+      <li>To invert the pipeline an attacker must recover the master from
+          observed outputs — a preimage problem against the AES + TinyPRP
+          stack, not a collision problem against MD5.</li>
+      <li>MD5's preimage and second-preimage resistance, while reduced,
+          remains computationally infeasible (no practical attack is known).
+          Combined with the brute-force cost of each pipeline run, the
+          construction is secure for its purpose.</li>
+    </ul>
+  </div>
+
+  <div class="dialog-actions">
+    <button type="button" id="closeHelpBtn" class="primary">Close</button>
+  </div>
+</dialog>
+
+<!-- Crypto modules (load order matters: HexUtils first) -->
+<script>
+'use strict';
+// Pure-JS hex <-> bytes helpers. No dependencies.
+//
+//   HexUtils.hexToBytes(hex)   -> Uint8Array
+//   HexUtils.bytesToHex(bytes) -> string (lowercase)
+// Both throw TypeError on wrong-typed input and Error on malformed input.
+//
+//   HexUtils.XOR(left,right)   -> Uint8Array
+// Parameters left, right might be either hex encoded (as for hexToBytes) or Uint8Array.
+// return is Uint8Array with the same size as longest(left,right).
+//
+class HexUtils {
+  // Matches an even-length string of hex characters only (0-9, a-f, A-F).
+  // Empty string is a valid empty input. Anchors prevent partial matches;
+  // the {2} group means odd lengths fail automatically. No backtracking.
+  static _HEX_RE = /^([0-9a-fA-F]{2})*$/;
+
+  static hexToBytes(hex) {
+    if (typeof hex !== 'string') {
+      throw new TypeError('hexToBytes: input must be a string');
+    }
+    if (!HexUtils._HEX_RE.test(hex)) {
+      throw new Error(
+        'hexToBytes: input must contain only hex digits (0-9, a-f, A-F) ' +
+        'in pairs — no whitespace, separators, or odd length'
+      );
+    }
+    const out = new Uint8Array(hex.length >>> 1);
+    for (let i = 0; i < out.length; i++) {
+      // Regex above guarantees these parseInt calls succeed.
+      out[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+    }
+    return out;
+  }
+
+  static bytesToHex(bytes) {
+    if (!(bytes instanceof Uint8Array)) {
+      throw new TypeError('bytesToHex: input must be a Uint8Array');
+    }
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) {
+      s += bytes[i].toString(16).padStart(2, '0');
+    }
+    return s;
+  }
+
+  static XOR(left, right) {
+    if (!(left  instanceof Uint8Array)) left  = HexUtils.hexToBytes(left);
+    if (!(right instanceof Uint8Array)) right = HexUtils.hexToBytes(right);
+    const longer  = left.length >= right.length ? left  : right;
+    const shorter = left.length >= right.length ? right : left;
+    const out = new Uint8Array(longer);
+    for (let i = 0; i < shorter.length; i++) out[i] ^= shorter[i];
+    return out;
+  }
+}
+// Pure-JS MD5. No dependencies, no crypto.subtle.
+// Single public entry point: hash(hexEncodedData) -> hex string (32 chars).
+//
+// MD5 is broken for collision-resistance and unsafe for new security uses.
+// Fine for non-adversarial uses (checksums, ETags, legacy interop).
+class MD5 {
+  // T[i] = floor(2^32 * abs(sin(i+1)))   (RFC 1321 §3.4)
+  static T = new Int32Array([
+    0xd76aa478|0, 0xe8c7b756|0, 0x242070db|0, 0xc1bdceee|0,
+    0xf57c0faf|0, 0x4787c62a|0, 0xa8304613|0, 0xfd469501|0,
+    0x698098d8|0, 0x8b44f7af|0, 0xffff5bb1|0, 0x895cd7be|0,
+    0x6b901122|0, 0xfd987193|0, 0xa679438e|0, 0x49b40821|0,
+    0xf61e2562|0, 0xc040b340|0, 0x265e5a51|0, 0xe9b6c7aa|0,
+    0xd62f105d|0, 0x02441453|0, 0xd8a1e681|0, 0xe7d3fbc8|0,
+    0x21e1cde6|0, 0xc33707d6|0, 0xf4d50d87|0, 0x455a14ed|0,
+    0xa9e3e905|0, 0xfcefa3f8|0, 0x676f02d9|0, 0x8d2a4c8a|0,
+    0xfffa3942|0, 0x8771f681|0, 0x6d9d6122|0, 0xfde5380c|0,
+    0xa4beea44|0, 0x4bdecfa9|0, 0xf6bb4b60|0, 0xbebfbc70|0,
+    0x289b7ec6|0, 0xeaa127fa|0, 0xd4ef3085|0, 0x04881d05|0,
+    0xd9d4d039|0, 0xe6db99e5|0, 0x1fa27cf8|0, 0xc4ac5665|0,
+    0xf4292244|0, 0x432aff97|0, 0xab9423a7|0, 0xfc93a039|0,
+    0x655b59c3|0, 0x8f0ccc92|0, 0xffeff47d|0, 0x85845dd1|0,
+    0x6fa87e4f|0, 0xfe2ce6e0|0, 0xa3014314|0, 0x4e0811a1|0,
+    0xf7537e82|0, 0xbd3af235|0, 0x2ad7d2bb|0, 0xeb86d391|0,
+  ]);
+
+  // Per-step rotation amounts, four-cycles within each round.
+  static S = new Int32Array([
+    7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,  7, 12, 17, 22,
+    5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,  5,  9, 14, 20,
+    4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,  4, 11, 16, 23,
+    6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,  6, 10, 15, 21,
+  ]);
+
+  hash(hexEncodedData) {
+    const msg = HexUtils.hexToBytes(hexEncodedData);
+    const msgLen = msg.length;
+    const bitLen = msgLen * 8;
+
+    // Padding: 0x80, then zeros, then 64-bit *little-endian* bit length.
+    // Total padded length must be a multiple of 64 bytes.
+    const padLen = (55 - msgLen) & 63;
+    const totalLen = msgLen + 1 + padLen + 8;
+    const buf = new Uint8Array(totalLen);
+    buf.set(msg);
+    buf[msgLen] = 0x80;
+
+    // Bit length, little-endian. Split because JS numbers are float64.
+    const bitHi = Math.floor(bitLen / 0x100000000) >>> 0;
+    const bitLo = bitLen >>> 0;
+    buf[totalLen - 8] =  bitLo         & 0xFF;
+    buf[totalLen - 7] = (bitLo >>>  8) & 0xFF;
+    buf[totalLen - 6] = (bitLo >>> 16) & 0xFF;
+    buf[totalLen - 5] = (bitLo >>> 24) & 0xFF;
+    buf[totalLen - 4] =  bitHi         & 0xFF;
+    buf[totalLen - 3] = (bitHi >>>  8) & 0xFF;
+    buf[totalLen - 2] = (bitHi >>> 16) & 0xFF;
+    buf[totalLen - 1] = (bitHi >>> 24) & 0xFF;
+
+    // Initial state (RFC 1321 §3.3). Stored in little-endian byte order.
+    let A = 0x67452301 | 0;
+    let B = 0xefcdab89 | 0;
+    let C = 0x98badcfe | 0;
+    let D = 0x10325476 | 0;
+
+    const X = new Int32Array(16);
+    const T = MD5.T;
+    const S = MD5.S;
+
+    for (let off = 0; off < totalLen; off += 64) {
+      // Load 16 little-endian 32-bit words.
+      for (let i = 0; i < 16; i++) {
+        const j = off + i * 4;
+        X[i] = (buf[j] | (buf[j+1] << 8) | (buf[j+2] << 16) | (buf[j+3] << 24)) | 0;
+      }
+
+      let a = A, b = B, c = C, d = D;
+
+      // 64 ops, organised as a rotating-register pipeline so we don't need
+      // four separate update statements per round. After each iteration the
+      // logical (a,b,c,d) tuple rotates right by one slot, with the freshly-
+      // updated register sliding into position b for the next step.
+      for (let i = 0; i < 64; i++) {
+        let f, k;
+        if (i < 16) {
+          f = (b & c) | (~b & d);          // F(b,c,d)
+          k = i;
+        } else if (i < 32) {
+          f = (d & b) | (~d & c);          // G(b,c,d) = (b&d)|(c&~d)
+          k = (5 * i + 1) & 15;
+        } else if (i < 48) {
+          f = b ^ c ^ d;                   // H(b,c,d)
+          k = (3 * i + 5) & 15;
+        } else {
+          f = c ^ (b | ~d);                // I(b,c,d) = c ^ (b|~d)
+          k = (7 * i) & 15;
+        }
+        const sum = (a + f + X[k] + T[i]) | 0;
+        const s = S[i];
+        const rot = ((sum << s) | (sum >>> (32 - s))) | 0;
+        // Rotate registers: new (a,b,c,d) = (d, b + rot, b, c)
+        const oldD = d;
+        d = c;
+        c = b;
+        b = (b + rot) | 0;
+        a = oldD;
+      }
+
+      A = (A + a) | 0;
+      B = (B + b) | 0;
+      C = (C + c) | 0;
+      D = (D + d) | 0;
+    }
+
+    // Output: A,B,C,D each as 4 little-endian bytes.
+    const out = new Uint8Array(16);
+    const H = [A, B, C, D];
+    for (let i = 0; i < 4; i++) {
+      const v = H[i];
+      out[i * 4]     =  v         & 0xFF;
+      out[i * 4 + 1] = (v >>>  8) & 0xFF;
+      out[i * 4 + 2] = (v >>> 16) & 0xFF;
+      out[i * 4 + 3] = (v >>> 24) & 0xFF;
+    }
+    return HexUtils.bytesToHex(out);
+  }
+}
+// Pure-JS AES-128 single-block primitive. No dependencies, no crypto.subtle.
+//
+// Public interface:
+//   expandKey(hexKey)       -- key must be 16 bytes (32 hex chars)
+//   encrypt(uint8DataBlock) -- input Uint8Array of exactly 16 bytes; returns Uint8Array(16)
+//   decrypt(uint8DataBlock) -- input Uint8Array of exactly 16 bytes; returns Uint8Array(16)
+//
+// This is the *raw* AES-128 block primitive (one block in, one block out).
+class AES128 {
+  // Forward S-box (FIPS 197 §5.1.1).
+  static SBox = new Uint8Array([
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
+  ]);
+
+  // Inverse S-box (FIPS 197 §5.3.2).
+  static SBoxInv = new Uint8Array([
+    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+    0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+    0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+    0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d,
+  ]);
+
+  // Round constants. Index 0 unused; Rcon[r] feeds into round-r key material.
+  // (Round-key word i with i % 4 == 0 XORs Rcon[i/4] into its leading byte.)
+  static Rcon = new Uint8Array([
+    0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36
+  ]);
+
+  constructor() {
+    this._roundKeys = null;  // 11 round keys × 16 bytes = 176 bytes total
+  }
+
+  // ---- GF(2^8) multiplication by x, mod the AES polynomial x^8+x^4+x^3+x+1.
+  static _xtime(x) {
+    return ((x << 1) ^ ((x & 0x80) ? 0x1b : 0)) & 0xff;
+  }
+
+  static _subBytes(s) {
+    const T = AES128.SBox;
+    for (let i = 0; i < 16; i++) s[i] = T[s[i]];
+  }
+  static _invSubBytes(s) {
+    const T = AES128.SBoxInv;
+    for (let i = 0; i < 16; i++) s[i] = T[s[i]];
+  }
+
+  // The state is a column-major 4×4 byte matrix: byte (row r, col c) lives at
+  // index r + 4*c. Row r therefore consists of bytes {s[r], s[r+4], s[r+8], s[r+12]}.
+  static _shiftRows(s) {
+    let t = s[1]; s[1] = s[5]; s[5] = s[9]; s[9] = s[13]; s[13] = t;     // row 1: <<< 1
+    t = s[2];  s[2]  = s[10]; s[10] = t;                                   // row 2: <<< 2
+    t = s[6];  s[6]  = s[14]; s[14] = t;
+    t = s[15]; s[15] = s[11]; s[11] = s[7]; s[7] = s[3]; s[3] = t;        // row 3: <<< 3 (= >>> 1)
+  }
+  static _invShiftRows(s) {
+    let t = s[13]; s[13] = s[9]; s[9] = s[5]; s[5] = s[1]; s[1] = t;     // row 1: >>> 1
+    t = s[2];  s[2]  = s[10]; s[10] = t;                                   // row 2: same
+    t = s[6];  s[6]  = s[14]; s[14] = t;
+    t = s[3];  s[3]  = s[7]; s[7] = s[11]; s[11] = s[15]; s[15] = t;     // row 3: >>> 3 (= <<< 1)
+  }
+
+  static _mixColumns(s) {
+    const xt = AES128._xtime;
+    for (let c = 0; c < 4; c++) {
+      const i = c * 4;
+      const a0 = s[i], a1 = s[i+1], a2 = s[i+2], a3 = s[i+3];
+      const t = a0 ^ a1 ^ a2 ^ a3;
+      s[i]   = a0 ^ t ^ xt(a0 ^ a1);
+      s[i+1] = a1 ^ t ^ xt(a1 ^ a2);
+      s[i+2] = a2 ^ t ^ xt(a2 ^ a3);
+      s[i+3] = a3 ^ t ^ xt(a3 ^ a0);
+    }
+  }
+  // Identity: InvMixColumns(c) == MixColumns(precondition(c)), where the
+  // preconditioning XORs xtime(xtime(a0^a2)) into a0,a2 and xtime(xtime(a1^a3))
+  // into a1,a3. Saves implementing a separate {0e,0b,0d,09} multiplier.
+  static _invMixColumns(s) {
+    const xt = AES128._xtime;
+    for (let c = 0; c < 4; c++) {
+      const i = c * 4;
+      const a0 = s[i], a1 = s[i+1], a2 = s[i+2], a3 = s[i+3];
+      const u = xt(xt(a0 ^ a2));
+      const v = xt(xt(a1 ^ a3));
+      s[i]   = a0 ^ u;
+      s[i+1] = a1 ^ v;
+      s[i+2] = a2 ^ u;
+      s[i+3] = a3 ^ v;
+    }
+    AES128._mixColumns(s);
+  }
+
+  static _addRoundKey(s, rk, off) {
+    for (let i = 0; i < 16; i++) s[i] ^= rk[off + i];
+  }
+
+  // ---- Public: derive round keys from a 32-hex-char key. Overwrites prior key.
+  expandKey(hexKey) {
+    const keyBytes = HexUtils.hexToBytes(hexKey);
+    if (keyBytes.length !== 16) {
+      throw new Error('expandKey: AES-128 requires a 16-byte key (32 hex characters)');
+    }
+
+    const rk = new Uint8Array(176);
+    rk.set(keyBytes);  // first round key = original key
+
+    const SBox = AES128.SBox;
+    const Rcon = AES128.Rcon;
+
+    // Generate words 4..43 (i counts bytes; i/4 is the word index).
+    for (let i = 16; i < 176; i += 4) {
+      let t0 = rk[i - 4];
+      let t1 = rk[i - 3];
+      let t2 = rk[i - 2];
+      let t3 = rk[i - 1];
+
+      if ((i & 0xF) === 0) {
+        // Start of a new round key: SubWord(RotWord(prev)) XOR Rcon[round]
+        const r = SBox[t1];
+        t1 = SBox[t2];
+        t2 = SBox[t3];
+        t3 = SBox[t0];
+        t0 = r ^ Rcon[i >>> 4];
+      }
+
+      rk[i]     = rk[i - 16]     ^ t0;
+      rk[i + 1] = rk[i - 15]     ^ t1;
+      rk[i + 2] = rk[i - 14]     ^ t2;
+      rk[i + 3] = rk[i - 13]     ^ t3;
+    }
+
+    this._roundKeys = rk;
+  }
+
+  _checkBlock(name, block) {
+    if (!this._roundKeys) {
+      throw new Error(`${name}: key has not been expanded; call expandKey() first`);
+    }
+    if (!(block instanceof Uint8Array)) {
+      throw new TypeError(`${name}: input must be a Uint8Array`);
+    }
+    if (block.length !== 16) {
+      throw new Error(`${name}: input must be exactly 16 bytes (got ${block.length})`);
+    }
+  }
+
+  encrypt(uint8DataBlock) {
+    this._checkBlock('encrypt', uint8DataBlock);
+    const s = new Uint8Array(uint8DataBlock);  // copy: don't mutate caller's input
+    const rk = this._roundKeys;
+
+    AES128._addRoundKey(s, rk, 0);
+    for (let r = 1; r < 10; r++) {
+      AES128._subBytes(s);
+      AES128._shiftRows(s);
+      AES128._mixColumns(s);
+      AES128._addRoundKey(s, rk, r * 16);
+    }
+    // Final round: no MixColumns
+    AES128._subBytes(s);
+    AES128._shiftRows(s);
+    AES128._addRoundKey(s, rk, 160);
+    return s;
+  }
+
+  decrypt(uint8DataBlock) {
+    this._checkBlock('decrypt', uint8DataBlock);
+    const s = new Uint8Array(uint8DataBlock);
+    const rk = this._roundKeys;
+
+    AES128._addRoundKey(s, rk, 160);
+    for (let r = 9; r >= 1; r--) {
+      AES128._invShiftRows(s);
+      AES128._invSubBytes(s);
+      AES128._addRoundKey(s, rk, r * 16);
+      AES128._invMixColumns(s);
+    }
+    AES128._invShiftRows(s);
+    AES128._invSubBytes(s);
+    AES128._addRoundKey(s, rk, 0);
+    return s;
+  }
+}
+// JavaScript port of the TinyPRP namespace from tinyprp.cxx
+// Operates on 16-bit (uint16_t) blocks using nibble-wise SP-network.
+//
+// Reference: Progress in Cryptology - INDOCRYPT 2006, LNCS vol. 4329, pp. 251.
+//
+// Note: The C++ original uses (unsigned short*)cast tricks that depend on
+// little-endian byte order. This port replicates that semantics explicitly:
+// byte[0] is the low byte of the 16-bit value, byte[1] is the high byte.
+class TinyPRP {
+  // ---- AES-style S-box (forward) ----
+  static SBox = new Uint8Array([
+    0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
+    0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
+    0xb7, 0xfd, 0x93, 0x26, 0x36, 0x3f, 0xf7, 0xcc, 0x34, 0xa5, 0xe5, 0xf1, 0x71, 0xd8, 0x31, 0x15,
+    0x04, 0xc7, 0x23, 0xc3, 0x18, 0x96, 0x05, 0x9a, 0x07, 0x12, 0x80, 0xe2, 0xeb, 0x27, 0xb2, 0x75,
+    0x09, 0x83, 0x2c, 0x1a, 0x1b, 0x6e, 0x5a, 0xa0, 0x52, 0x3b, 0xd6, 0xb3, 0x29, 0xe3, 0x2f, 0x84,
+    0x53, 0xd1, 0x00, 0xed, 0x20, 0xfc, 0xb1, 0x5b, 0x6a, 0xcb, 0xbe, 0x39, 0x4a, 0x4c, 0x58, 0xcf,
+    0xd0, 0xef, 0xaa, 0xfb, 0x43, 0x4d, 0x33, 0x85, 0x45, 0xf9, 0x02, 0x7f, 0x50, 0x3c, 0x9f, 0xa8,
+    0x51, 0xa3, 0x40, 0x8f, 0x92, 0x9d, 0x38, 0xf5, 0xbc, 0xb6, 0xda, 0x21, 0x10, 0xff, 0xf3, 0xd2,
+    0xcd, 0x0c, 0x13, 0xec, 0x5f, 0x97, 0x44, 0x17, 0xc4, 0xa7, 0x7e, 0x3d, 0x64, 0x5d, 0x19, 0x73,
+    0x60, 0x81, 0x4f, 0xdc, 0x22, 0x2a, 0x90, 0x88, 0x46, 0xee, 0xb8, 0x14, 0xde, 0x5e, 0x0b, 0xdb,
+    0xe0, 0x32, 0x3a, 0x0a, 0x49, 0x06, 0x24, 0x5c, 0xc2, 0xd3, 0xac, 0x62, 0x91, 0x95, 0xe4, 0x79,
+    0xe7, 0xc8, 0x37, 0x6d, 0x8d, 0xd5, 0x4e, 0xa9, 0x6c, 0x56, 0xf4, 0xea, 0x65, 0x7a, 0xae, 0x08,
+    0xba, 0x78, 0x25, 0x2e, 0x1c, 0xa6, 0xb4, 0xc6, 0xe8, 0xdd, 0x74, 0x1f, 0x4b, 0xbd, 0x8b, 0x8a,
+    0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
+    0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
+    0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
+  ]);
+
+  // ---- AES-style S-box (inverse) ----
+  static SBoxInv = new Uint8Array([
+    0x52, 0x09, 0x6a, 0xd5, 0x30, 0x36, 0xa5, 0x38, 0xbf, 0x40, 0xa3, 0x9e, 0x81, 0xf3, 0xd7, 0xfb,
+    0x7c, 0xe3, 0x39, 0x82, 0x9b, 0x2f, 0xff, 0x87, 0x34, 0x8e, 0x43, 0x44, 0xc4, 0xde, 0xe9, 0xcb,
+    0x54, 0x7b, 0x94, 0x32, 0xa6, 0xc2, 0x23, 0x3d, 0xee, 0x4c, 0x95, 0x0b, 0x42, 0xfa, 0xc3, 0x4e,
+    0x08, 0x2e, 0xa1, 0x66, 0x28, 0xd9, 0x24, 0xb2, 0x76, 0x5b, 0xa2, 0x49, 0x6d, 0x8b, 0xd1, 0x25,
+    0x72, 0xf8, 0xf6, 0x64, 0x86, 0x68, 0x98, 0x16, 0xd4, 0xa4, 0x5c, 0xcc, 0x5d, 0x65, 0xb6, 0x92,
+    0x6c, 0x70, 0x48, 0x50, 0xfd, 0xed, 0xb9, 0xda, 0x5e, 0x15, 0x46, 0x57, 0xa7, 0x8d, 0x9d, 0x84,
+    0x90, 0xd8, 0xab, 0x00, 0x8c, 0xbc, 0xd3, 0x0a, 0xf7, 0xe4, 0x58, 0x05, 0xb8, 0xb3, 0x45, 0x06,
+    0xd0, 0x2c, 0x1e, 0x8f, 0xca, 0x3f, 0x0f, 0x02, 0xc1, 0xaf, 0xbd, 0x03, 0x01, 0x13, 0x8a, 0x6b,
+    0x3a, 0x91, 0x11, 0x41, 0x4f, 0x67, 0xdc, 0xea, 0x97, 0xf2, 0xcf, 0xce, 0xf0, 0xb4, 0xe6, 0x73,
+    0x96, 0xac, 0x74, 0x22, 0xe7, 0xad, 0x35, 0x85, 0xe2, 0xf9, 0x37, 0xe8, 0x1c, 0x75, 0xdf, 0x6e,
+    0x47, 0xf1, 0x1a, 0x71, 0x1d, 0x29, 0xc5, 0x89, 0x6f, 0xb7, 0x62, 0x0e, 0xaa, 0x18, 0xbe, 0x1b,
+    0xfc, 0x56, 0x3e, 0x4b, 0xc6, 0xd2, 0x79, 0x20, 0x9a, 0xdb, 0xc0, 0xfe, 0x78, 0xcd, 0x5a, 0xf4,
+    0x1f, 0xdd, 0xa8, 0x33, 0x88, 0x07, 0xc7, 0x31, 0xb1, 0x12, 0x10, 0x59, 0x27, 0x80, 0xec, 0x5f,
+    0x60, 0x51, 0x7f, 0xa9, 0x19, 0xb5, 0x4a, 0x0d, 0x2d, 0xe5, 0x7a, 0x9f, 0x93, 0xc9, 0x9c, 0xef,
+    0xa0, 0xe0, 0x3b, 0x4d, 0xae, 0x2a, 0xf5, 0xb0, 0xc8, 0xeb, 0xbb, 0x3c, 0x83, 0x53, 0x99, 0x61,
+    0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26, 0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d,
+  ]);
+
+  // Round constants (one per round beyond the input key)
+  static rcon = [0x0101, 0x0202, 0x0404, 0x0808];
+  static round0 = 4;            // == rcon.length
+  static reductionPoly = 0x13;  // GF(2^4) reduction polynomial: x^4 + x + 1
+
+  constructor() {
+    this._expandedKey = null;   // { keySize, rkeys: Uint16Array }
+  }
+
+  // ---- GF(2^4) "xtime": multiply a nibble by x mod (x^4 + x + 1) ----
+  static _xtime(poly) {
+    let t = (poly & 0xF) << 1;
+    if (t & 0x10) t ^= TinyPRP.reductionPoly;
+    return t & 0xFF;
+  }
+
+  // ---- MixColumns on a 2-byte state, viewed as a 2x2 matrix of nibbles.
+  // Column j has nibbles (high(a[j]), low(a[j])); the per-column transform is
+  // (s0,s1) -> (s1 ^ xtime(s0^s1), s0 ^ xtime(s0^s1))  (multiplication by 3x+2)
+  static _mixColumns(a) {
+    // c[row][col]: row 0 = high nibbles, row 1 = low nibbles
+    let c00 = a[0] >> 4, c01 = a[1] >> 4;
+    let c10 = a[0] & 0xF, c11 = a[1] & 0xF;
+
+    let t = TinyPRP._xtime(c00 ^ c01);
+    const n00 = (c01 ^ t) & 0xF;
+    const n01 = (c00 ^ t) & 0xF;
+
+    t = TinyPRP._xtime(c10 ^ c11);
+    const n10 = (c11 ^ t) & 0xF;
+    const n11 = (c10 ^ t) & 0xF;
+
+    a[0] = ((n00 << 4) | n10) & 0xFF;
+    a[1] = ((n01 << 4) | n11) & 0xFF;
+  }
+  // InvMixColumns is identical to MixColumns (3x+2 is self-inverse mod x^2+1).
+
+  // ---- ShiftRows: a 16-bit nibble rotation followed by per-byte bit rotations
+  // Faithfully reproduces the C++ code, which does these operations in order:
+  //   1. rotate the 16-bit little-endian word left by 12 bits (= right by 4)
+  //   2. rotate byte a[0] left by 6 bits
+  //   3. rotate byte a[1] left by 2 bits
+  static _shiftRows(a) {
+    let ri = (a[0] | (a[1] << 8)) & 0xFFFF;
+    ri = ((ri << 12) | (ri >>> 4)) & 0xFFFF;
+    a[0] = ri & 0xFF;
+    a[1] = (ri >>> 8) & 0xFF;
+    a[0] = ((a[0] << 6) | (a[0] >>> 2)) & 0xFF;
+    a[1] = ((a[1] << 2) | (a[1] >>> 6)) & 0xFF;
+  }
+
+  static _invShiftRows(a) {
+    a[0] = ((a[0] << 2) | (a[0] >>> 6)) & 0xFF;
+    a[1] = ((a[1] << 6) | (a[1] >>> 2)) & 0xFF;
+    let ri = (a[0] | (a[1] << 8)) & 0xFFFF;
+    ri = ((ri << 4) | (ri >>> 12)) & 0xFFFF;
+    a[0] = ri & 0xFF;
+    a[1] = (ri >>> 8) & 0xFF;
+  }
+
+  static _subBytes(a) {
+    a[0] = TinyPRP.SBox[a[0]];
+    a[1] = TinyPRP.SBox[a[1]];
+  }
+
+  static _invSubBytes(a) {
+    a[0] = TinyPRP.SBoxInv[a[0]];
+    a[1] = TinyPRP.SBoxInv[a[1]];
+  }
+
+  // ---- Public: derive round keys from a hex string. Overwrites any prior key.
+  // Accepts 4, 8, 12, or 16 byte keys -> 8, 16, 24, 32 hex characters.
+  expandKey(hexKey) {
+    const keyBytes = HexUtils.hexToBytes(hexKey);
+
+    let keySize;
+    switch (keyBytes.length) {
+      case 4:  keySize = 0; break;
+      case 8:  keySize = 1; break;
+      case 12: keySize = 2; break;
+      case 16: keySize = 3; break;
+      default:
+        throw new Error('expandKey: invalid key length, expected 4/8/12/16 bytes (8/16/24/32 hex chars)');
+    }
+
+    const nSize = (keySize + 1) * 2;          // # of input 16-bit words
+    const total = TinyPRP.round0 + nSize;     // total round keys
+    const rkeys = new Uint16Array(total);
+
+    // Load input key as little-endian 16-bit words (matches C++ unsigned short cast)
+    for (let i = 0; i < nSize; i++) {
+      rkeys[i] = (keyBytes[i * 2] | (keyBytes[i * 2 + 1] << 8)) & 0xFFFF;
+    }
+
+    // Generate the remaining round keys
+    const buf = new Uint8Array(2);
+    for (let i = nSize; i < total; i++) {
+      let cur = TinyPRP.rcon[i - nSize];
+      for (let k = 0; k < nSize; k++) {
+        cur ^= rkeys[i - k - 1];
+        buf[0] = cur & 0xFF;
+        buf[1] = (cur >>> 8) & 0xFF;
+        TinyPRP._subBytes(buf);
+        TinyPRP._shiftRows(buf);
+        TinyPRP._mixColumns(buf);
+        cur = (buf[0] | (buf[1] << 8)) & 0xFFFF;
+      }
+      rkeys[i] = cur;
+    }
+
+    this._expandedKey = { keySize, rkeys };
+  }
+
+  // ---- Public: encrypt a uint16_t -> uint16_t ----
+  encrypt(intData) {
+    if (!this._expandedKey) {
+      throw new Error('encrypt: key has not been expanded; call expandKey() first');
+    }
+    if (!Number.isInteger(intData) || intData < 0 || intData > 0xFFFF) {
+      throw new RangeError('encrypt: intData must be an integer in [0, 65535]');
+    }
+
+    const { keySize, rkeys } = this._expandedKey;
+    const a = new Uint8Array(2);
+    a[0] = intData & 0xFF;
+    a[1] = (intData >>> 8) & 0xFF;
+
+    // Initial whitening
+    let v = ((a[0] | (a[1] << 8)) ^ rkeys[0]) & 0xFFFF;
+    a[0] = v & 0xFF;
+    a[1] = (v >>> 8) & 0xFF;
+
+    const last = (keySize + 1) * 2 + TinyPRP.round0 - 1;  // index of final round key
+    let i = 1;
+    for (; i < last; i++) {
+      TinyPRP._subBytes(a);
+      TinyPRP._shiftRows(a);
+      TinyPRP._mixColumns(a);
+      v = ((a[0] | (a[1] << 8)) ^ rkeys[i]) & 0xFFFF;
+      a[0] = v & 0xFF;
+      a[1] = (v >>> 8) & 0xFF;
+    }
+    // Final round (no MixColumns)
+    TinyPRP._subBytes(a);
+    TinyPRP._shiftRows(a);
+    v = ((a[0] | (a[1] << 8)) ^ rkeys[i]) & 0xFFFF;
+    return v;
+  }
+
+  // ---- Public: decrypt a uint16_t -> uint16_t ----
+  decrypt(intData) {
+    if (!this._expandedKey) {
+      throw new Error('decrypt: key has not been expanded; call expandKey() first');
+    }
+    if (!Number.isInteger(intData) || intData < 0 || intData > 0xFFFF) {
+      throw new RangeError('decrypt: intData must be an integer in [0, 65535]');
+    }
+
+    const { keySize, rkeys } = this._expandedKey;
+    const a = new Uint8Array(2);
+    a[0] = intData & 0xFF;
+    a[1] = (intData >>> 8) & 0xFF;
+
+    const last = (keySize + 1) * 2 + TinyPRP.round0 - 1;
+
+    // Undo final whitening
+    let v = ((a[0] | (a[1] << 8)) ^ rkeys[last]) & 0xFFFF;
+    a[0] = v & 0xFF;
+    a[1] = (v >>> 8) & 0xFF;
+
+    for (let i = last - 1; i > 0; i--) {
+      TinyPRP._invShiftRows(a);
+      TinyPRP._invSubBytes(a);
+      v = ((a[0] | (a[1] << 8)) ^ rkeys[i]) & 0xFFFF;
+      a[0] = v & 0xFF;
+      a[1] = (v >>> 8) & 0xFF;
+      // InvMixColumns == MixColumns (3x+2 is self-inverse mod x^2+1)
+      TinyPRP._mixColumns(a);
+    }
+    TinyPRP._invShiftRows(a);
+    TinyPRP._invSubBytes(a);
+    v = ((a[0] | (a[1] << 8)) ^ rkeys[0]) & 0xFFFF;
+    return v;
+  }
+
+  // Shuffle a string by using cycle-walked encrypt as a permutation on [0, n).
+  // Output character at position i is input[cycleWalkedEncrypt(i)].
+  // Same key + same input always produces the same output.
+  shuffleString(input) {
+    if (typeof input !== 'string') {
+      throw new TypeError('shuffleString: input must be a string');
+    }
+    if (input.length < 5) {
+      throw new Error('shuffleString: input length must be at least 5');
+    }
+    if (input.length > 0x10000) {
+      throw new Error('shuffleString: input length must be at most 65536 (TinyPRP block range)');
+    }
+
+    const n = input.length;
+    const out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let e = this.encrypt(i);
+      while (e >= n) e = this.encrypt(e);     // cycle walking
+      out[i] = input[e];
+    }
+    return out.join('');
+  }
+
+  // Unshuffle a string by using cycle-walked encrypt as a permutation on [0, n).
+  // Output character at position i is input[cycleWalkedDecrypt(i)].
+  // Same key + same input always produces the same output.
+  unshuffleString(input) {
+    if (typeof input !== 'string') {
+      throw new TypeError('unshuffleString: input must be a string');
+    }
+    if (input.length < 5) {
+      throw new Error('unshuffleString: input length must be at least 5');
+    }
+    if (input.length > 0x10000) {
+      throw new Error('unshuffleString: input length must be at most 65536 (TinyPRP block range)');
+    }
+
+    const n = input.length;
+    const out = new Array(n);
+    for (let i = 0; i < n; i++) {
+      let e = this.decrypt(i);
+      while (e >= n) e = this.decrypt(e);     // cycle walking
+      out[i] = input[e];
+    }
+    return out.join('');
+  }
+}
+(function () {
+
+// -------- internal settings state, mutated only on Accept --------
+const settings = {
+  caps:    { chars: 'ZYXWVUTSRQPONMLKJIHGFEDCBA', count: 3 },
+  lower:   { chars: 'abcdefghijklmnopqrstuvwxyz', count: 7 },
+  digits:  { chars: '0123456789',                 count: 2 },
+  special: { chars: '#:}!{+,-.)[]_;(',            count: 0 },
+};
+const sectionLabels = { caps: 'Capitals', lower: 'Lowercase', digits: 'Digits', special: 'Specials' };
+
+let lastPassword = null;
+
+// -------- DOM refs --------
+const $ = (id) => document.getElementById(id);
+const mainForm     = $('mainForm');
+const masterEl     = $('master');
+const domainEl     = $('domain');
+const userEl       = $('user');
+const divEl        = $('div');
+const statusEl     = $('status');
+const revealBtn    = $('revealBtn');
+const settingsBtn  = $('settingsBtn');
+
+const settingsDialog = $('settingsDialog');
+const acceptBtn      = $('acceptBtn');
+const cancelBtn      = $('cancelBtn');
+const settingsError  = $('settingsError');
+
+const fields = {
+  caps:    { chars: $('capsChars'),    count: $('capsCount')    },
+  lower:   { chars: $('lowerChars'),   count: $('lowerCount')   },
+  digits:  { chars: $('digitsChars'),  count: $('digitsCount')  },
+  special: { chars: $('specialChars'), count: $('specialCount') },
+};
+
+const revealDialog   = $('revealDialog');
+const revealText     = $('revealText');
+const closeRevealBtn = $('closeRevealBtn');
+
+const helpBtn      = $('helpBtn');
+const helpDialog   = $('helpDialog');
+const closeHelpBtn = $('closeHelpBtn');
+
+// -------- helpers --------
+function utf8ToHex(str) {
+  return HexUtils.bytesToHex(new TextEncoder().encode(str));
+}
+function md5OfString(str) {
+  return new MD5().hash(utf8ToHex(str));
+}
+
+// Rebuild a count <select> with options 0..length, clamping the current value.
+function rebuildCountSelect(selectEl, length, currentValue) {
+  selectEl.innerHTML = '';
+  for (let i = 0; i <= length; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = String(i);
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = String(Math.min(currentValue | 0, length));
+}
+
+function setStatus(text, kind) {
+  statusEl.textContent = text || '';
+  statusEl.className = 'status' + (kind ? ' ' + kind : '');
+}
+
+// -------- the password generation algorithm --------
+function generatePassword(masterStr, domainStr, userStr, divStr) {
+  // (1) A = MD5(master) — 32 hex chars = 128-bit key for AES.
+  const keyA = md5OfString(masterStr);
+
+  // (2) B = MD5(domain) || MD5(user) || (MD5(div) if div is non-empty)
+  let bHex = md5OfString(domainStr) + md5OfString(userStr);
+  if (divStr.length > 0) bHex += md5OfString(divStr);
+  const B = HexUtils.hexToBytes(bHex);   // 32 or 48 bytes (2 or 3 blocks)
+
+  // (3) AES-128-CBC encrypt B with key A, zero IV, using HexUtils.XOR.
+  const aes = new AES128();
+  aes.expandKey(keyA);
+  let prev = new Uint8Array(16);   // zero IV
+  let last = null;
+  for (let i = 0; i < B.length; i += 16) {
+    const block = B.slice(i, i + 16);
+    const xored = HexUtils.XOR(block, prev);
+    last = aes.encrypt(xored);
+    prev = last;
+  }
+
+  // (4) C = last block — used as TinyPRP key (32 hex chars = max key size).
+  let keyC = HexUtils.bytesToHex(last);
+
+  // (5) Key TinyPRP with C.
+  const tprp = new TinyPRP();
+  tprp.expandKey(keyC);
+
+  // (6) For each section in order, if count>0, shuffle the whole charset
+  //     into reSeed, take the first `count` chars, then re-key TinyPRP by
+  //     XOR-folding MD5(reSeed) into keyC. This guarantees every section
+  //     (and the final shuffle in step 7) uses a fresh permutation —
+  //     attacker cannot use the leaked permutation of one subset to
+  //     predict any other subset or the final ordering.
+  const order = [settings.caps, settings.lower, settings.digits, settings.special];
+  let D = '';
+  for (const sec of order) {
+    if (sec.count > 0) {
+      const reSeed = tprp.shuffleString(sec.chars);
+      D += reSeed.slice(0, sec.count);
+      keyC = HexUtils.bytesToHex(HexUtils.XOR(keyC, md5OfString(reSeed)));
+      tprp.expandKey(keyC);
+    }
+  }
+
+  // (7) Final shuffle of D, using the last re-keyed permutation
+  //     (different from any of the per-section permutations above).
+  return tprp.shuffleString(D);
+}
+
+// -------- main form: enter-key navigation + submit --------
+function nonEmpty(input) { return input.value.trim().length > 0; }
+
+function setupEnterNav(input, next, required) {
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+    e.preventDefault();
+    if (required && !nonEmpty(input)) {
+      input.classList.add('invalid');
+      input.focus();
+      return;
+    }
+    input.classList.remove('invalid');
+    if (next) next.focus();
+    else mainForm.requestSubmit();   // Enter on last field -> submit
+  });
+  input.addEventListener('input', () => input.classList.remove('invalid'));
+}
+setupEnterNav(masterEl, domainEl, true);
+setupEnterNav(domainEl, userEl,   true);
+setupEnterNav(userEl,   divEl,    true);
+setupEnterNav(divEl,    null,     false);   // Enter on div -> submit
+
+mainForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  setStatus('');
+  // Validate the three required fields. Find the first empty one and focus it.
+  let firstInvalid = null;
+  for (const f of [masterEl, domainEl, userEl]) {
+    if (!nonEmpty(f)) {
+      f.classList.add('invalid');
+      if (!firstInvalid) firstInvalid = f;
+    }
+  }
+  if (firstInvalid) {
+    setStatus('Master, domain, and user are required.', 'error');
+    firstInvalid.focus();
+    return;
+  }
+
+  try {
+    const pwd = generatePassword(
+      masterEl.value,
+      domainEl.value.trim(),
+      userEl.value.trim(),
+      divEl.value.trim()
+    );
+    lastPassword = pwd;
+    revealBtn.disabled = false;
+
+    let copied = false;
+    try {
+      await navigator.clipboard.writeText(pwd);
+      copied = true;
+    } catch (_) { /* clipboard unavailable */ }
+
+    setStatus(
+      copied
+        ? 'Password generated and copied to clipboard.'
+        : 'Password generated. (Clipboard unavailable — click 👁 to view.)',
+      copied ? 'success' : 'warn'
+    );
+  } catch (err) {
+    setStatus('Error: ' + err.message, 'error');
+  }
+});
+
+// -------- settings dialog --------
+settingsBtn.addEventListener('click', () => {
+  // Populate dialog from committed settings (NOT from any prior canceled edits).
+  for (const k of Object.keys(fields)) {
+    fields[k].chars.value = settings[k].chars;
+    rebuildCountSelect(fields[k].count, settings[k].chars.length, settings[k].count);
+  }
+  settingsError.textContent = '';
+  settingsDialog.showModal();
+});
+
+// When a charset textbox changes, rebuild the matching count select.
+for (const k of Object.keys(fields)) {
+  fields[k].chars.addEventListener('input', () => {
+    const curr = parseInt(fields[k].count.value, 10) || 0;
+    rebuildCountSelect(fields[k].count, fields[k].chars.value.length, curr);
+  });
+}
+
+acceptBtn.addEventListener('click', () => {
+  // Read candidate values; validate; commit only if validation passes.
+  const candidate = {};
+  for (const k of Object.keys(fields)) {
+    candidate[k] = {
+      chars: fields[k].chars.value,
+      count: parseInt(fields[k].count.value, 10) || 0,
+    };
+  }
+  // Each charset must have at least 6 chars.
+  for (const k of Object.keys(candidate)) {
+    if (candidate[k].chars.length < 6) {
+      settingsError.textContent =
+        sectionLabels[k] + ' character set must have at least 6 characters.';
+      fields[k].chars.focus();
+      return;
+    }
+  }
+  // Sum of counts must be at least 6.
+  const sum = candidate.caps.count + candidate.lower.count
+            + candidate.digits.count + candidate.special.count;
+  if (sum < 6) {
+    settingsError.textContent =
+      'Sum of character counts must be at least 6 (currently ' + sum + ').';
+    return;
+  }
+  // Commit to the live settings object.
+  for (const k of Object.keys(candidate)) {
+    settings[k].chars = candidate[k].chars;
+    settings[k].count = candidate[k].count;
+  }
+  settingsDialog.close();
+});
+
+cancelBtn.addEventListener('click', () => settingsDialog.close());
+
+// -------- reveal dialog --------
+revealBtn.addEventListener('click', () => {
+  if (!lastPassword) return;
+  revealText.textContent = lastPassword;
+  revealDialog.showModal();
+});
+closeRevealBtn.addEventListener('click', () => revealDialog.close());
+
+// -------- help dialog --------
+helpBtn.addEventListener('click', () => helpDialog.showModal());
+closeHelpBtn.addEventListener('click', () => helpDialog.close());
+
+// -------- initial focus --------
+masterEl.focus();
+
+})();
+</script>
+</body>
+</html>
